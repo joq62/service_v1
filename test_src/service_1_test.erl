@@ -36,13 +36,13 @@ start()->
     ok=setup(),
     io:format("~p~n",[{"Stop setup",?MODULE,?FUNCTION_NAME,?LINE}]),
 
-    io:format("~p~n",[{"Start pass_0()",?MODULE,?FUNCTION_NAME,?LINE}]),
-    ok=pass_0(),
-    io:format("~p~n",[{"Stop pass_0()",?MODULE,?FUNCTION_NAME,?LINE}]),
+  %  io:format("~p~n",[{"Start pass_0()",?MODULE,?FUNCTION_NAME,?LINE}]),
+  %  ok=pass_0(),
+  %  io:format("~p~n",[{"Stop pass_0()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
-  %  io:format("~p~n",[{"Start pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
-   % ok=pass_1(),
-  %  io:format("~p~n",[{"Stop pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
+    io:format("~p~n",[{"Start pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=pass_1(),
+    io:format("~p~n",[{"Stop pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
   %  io:format("~p~n",[{"Start pass_2()",?MODULE,?FUNCTION_NAME,?LINE}]),
    % ok=pass_2(),
@@ -69,6 +69,9 @@ start()->
    
     io:format("------>"++atom_to_list(?MODULE)++" ENDED SUCCESSFUL ---------"),
     ok.
+
+
+
 
 
 %% --------------------------------------------------------------------
@@ -109,15 +112,6 @@ pass_5()->
 %% Returns: non
 %% --------------------------------------------------------------------
 pass_3()->
-    HostIds=["glurk","joq62-X550CA","c0"],
-    [{ok,_},{ok,_}]=cluster:start_masters(HostIds),
-
-   % Master2=list_to_atom("master"++"@"++HostId2),
-  %  pong=net_adm:ping(Master2),
-   % Slave02=list_to_atom("slave0"++"@"++HostId2),
-   % {ok,Slave02}=cluster:start_slave(HostId2,"slave0","-setcookie abc"),
-
-
     ok.
 
 %% --------------------------------------------------------------------
@@ -154,37 +148,9 @@ pass_2()->
 %% Returns: non
 %% --------------------------------------------------------------------
 pass_1()->
-    ok=cluster:load_config(),
-    {ok,[[{host_id,"joq62-X550CA"},
-	  {ip,"192.168.0.100"},
-	  {ssh_port,22},
-	  {uid,"joq62"},
-	  {pwd,"festum01"}],
-	 [{host_id,"c0"},
-	  {ip,"192.168.0.200"},
-	  {ssh_port,22},
-	  {uid,"joq62"},
-	  {pwd,"festum01"}],
-	 [{host_id,"c1"},
-	  {ip,"192.168.0.201"},
-	  {ssh_port,22},
-	  {uid,"joq62"},
-	  {pwd,"festum01"}],
-	 [{host_id,"c2"},
-	  {ip,"192.168.0.202"},
-	  {ssh_port,22},
-	  {uid,"joq62"},
-	  {pwd,"festum01"}],
-	 [{host_id,"joq62-X550CA"},
-	  {ip,"192.168.1.50"},
-	  {ssh_port,22},
-	  {uid,"joq62"},
-	  {pwd,"festum01"}],
-	 [{host_id,"c2"},
-	  {ip,"192.168.1.202"},
-	  {ssh_port,22},
-	  {uid,"joq62"},
-	  {pwd,"festum01"}]]}=cluster:read_config(),
+    [{running,Running},{missing,Missing}]=cluster:status_slaves(),
+    10=lists:flatlength(Running),
+    10=lists:flatlength(Missing),   
     ok.
 
 %% --------------------------------------------------------------------
@@ -221,7 +187,32 @@ pass_11()->
 %% Returns: non
 %% --------------------------------------------------------------------
 setup()->
-   
+   ToKill=[	    
+	    'master@joq62-X550CA',
+	    'master@c2',
+	    'slave0@joq62-X550CA',
+	    'slave1@joq62-X550CA',
+	    'slave2@joq62-X550CA',
+	    'slave3@joq62-X550CA',
+	    slave1@c0,
+	    slave3@c0,
+	    slave2@c0,
+	    slave4@c0,
+	    slave0@c0,
+	    slave1@c2,
+	    slave3@c2,
+	    slave2@c2,
+	    slave4@c2,
+	    slave0@c2,
+	    'slave4@joq62-X550CA'],
+    [{rpc:call(Node,init,stop,[]),Node}||Node<-ToKill],
+
+    HostIds=["joq62-X550CA","c0","c2"], 
+    [{ok,_},{ok,_}]=cluster:start_masters(HostIds),
+    WantedHostIds=["joq62-X550CA","c0","c2"],   
+    L=cluster:start_slaves(WantedHostIds),
+    R=[{ok,Slave}||{ok,Slave}<-L],
+    10=lists:flatlength(R),
     ok.
 
 
@@ -232,6 +223,25 @@ setup()->
 %% -------------------------------------------------------------------    
 
 cleanup()->
+      ToKill=[	    
+	    'master@joq62-X550CA',
+	    'master@c2',
+	    'slave0@joq62-X550CA',
+	    'slave1@joq62-X550CA',
+	    'slave2@joq62-X550CA',
+	    'slave3@joq62-X550CA',
+	    slave1@c0,
+	    slave3@c0,
+	    slave2@c0,
+	    slave4@c0,
+	    slave0@c0,
+	    slave1@c2,
+	    slave3@c2,
+	    slave2@c2,
+	    slave4@c2,
+	    slave0@c2,
+	    'slave4@joq62-X550CA'],
+    [{rpc:call(Node,init,stop,[]),Node}||Node<-ToKill],
     ok.
 %% --------------------------------------------------------------------
 %% Function:start/0 

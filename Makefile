@@ -18,6 +18,9 @@ unit_test:
 #	support
 	cp ../support/src/support.app ebin;
 	erlc -o ebin ../support/src/*.erl;
+#	cluster
+	cp ../cluster/src/cluster.app ebin;
+	erlc -o ebin ../cluster/src/*.erl;
 #	service
 	cp src/service.app ebin;
 	erlc -o ebin src/*.erl;

@@ -55,6 +55,17 @@ setup()->
    
 %    io:format("Line = ~p~n",[{?MODULE,?LINE}]),
     
+    rpc:call(node(),application,stop,[support],2*5000),
+    timer:sleep(500),
+    ok=rpc:call(node(),application,start,[support],10*5000),
+    ?assertMatch({pong,_,support},
+		 rpc:call(node(),support,ping,[],1*5000)),	
+
+    rpc:call(node(),application,stop,[cluster],10*5000),
+    timer:sleep(500),
+    ok=rpc:call(node(),application,start,[cluster],10*5000),
+    ?assertMatch({pong,_,cluster},
+		 rpc:call(node(),cluster,ping,[],1*5000)),	
     % Start a Service application 
       
     rpc:call(node(),application,stop,[?APP],10*5000),
