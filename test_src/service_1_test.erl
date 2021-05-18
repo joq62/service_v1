@@ -4,7 +4,7 @@
 %%% 
 %%% Created : 10 dec 2012
 %%% -------------------------------------------------------------------
--module(cluster_test).   
+-module(service_1_test).   
    
 %% --------------------------------------------------------------------
 %% Include files
@@ -77,52 +77,21 @@ start()->
 %% Returns: non
 %% --------------------------------------------------------------------
 pass_0()->
-    {pong,
-     'test_cluster@joq62-X550CA',
-     cluster_control}=cluster_control:ping(),
-    RHosts=cluster:running_hosts(),
-    RSlaves=cluster:running_slaves(),
-    MHosts=cluster:missing_hosts(),
-    MSlaves=cluster:missing_slaves(),
-    io:format("RHosts ~p~n",[{RHosts,?MODULE,?FUNCTION_NAME,?LINE}]),
-    io:format("RSlaves ~p~n",[{RSlaves,?MODULE,?FUNCTION_NAME,?LINE}]),
-    io:format("MHosts ~p~n",[{MHosts,?MODULE,?FUNCTION_NAME,?LINE}]),
-    io:format("MSlaves ~p~n",[{MSlaves,?MODULE,?FUNCTION_NAME,?LINE}]),
-
-   % 10=lists:flatlength(RHosts),
-   % 0=lists:flatlength(RSlaves),
-   % 20=lists:flatlength(MHosts),
-   % 20=lists:flatlength(MSlaves),
-    HostIds=["glurk","joq62-X550CA","c0","c2"], 
-    [{ok,_},{ok,_}]=cluster:start_masters(HostIds),
-    WantedHostIds=["glurk","joq62-X550CA","c0","c2"],   
-    L=cluster:start_slaves(WantedHostIds),
-    R=[{ok,Slave}||{ok,Slave}<-L],
-    10=lists:flatlength(R),
-    [{running,RunningHosts},{missing,MissingHosts}]=cluster:status_hosts(),
-    10=lists:flatlength(RunningHosts),
-    20=lists:flatlength(MissingHosts),
-
-    [{running,RunningSlaves},{missing,MissingSlaves}]=cluster:status_slaves(),
-    10=lists:flatlength(RunningSlaves),
-    10=lists:flatlength(MissingSlaves),  
-    timer:sleep(1000),
- 
-    RHosts1=cluster:running_hosts(),
-    RSlaves1=cluster:running_slaves(),
-    MHosts1=cluster:missing_hosts(),
-    MSlaves1=cluster:missing_slaves(),
-    io:format("RHosts1 ~p~n",[{RHosts1,?MODULE,?FUNCTION_NAME,?LINE}]),
-    io:format("RSlaves1 ~p~n",[{RSlaves1,?MODULE,?FUNCTION_NAME,?LINE}]),
-    io:format("MHosts1 ~p~n",[{MHosts1,?MODULE,?FUNCTION_NAME,?LINE}]),
-    io:format("MSlaves1 ~p~n",[{MSlaves1,?MODULE,?FUNCTION_NAME,?LINE}]),
-
-    10=lists:flatlength(cluster:running_hosts()),
-    10=lists:flatlength(cluster:running_slaves()),
-    20=lists:flatlength(cluster:missing_hosts()),
-    10=lists:flatlength(cluster:missing_slaves()),
+    {glurk,{load_catalog},handle_call}=service:load_catalog(),
+    {glurk,{read_catalog},handle_call}=service:read_catalog(),
+    {glurk,{load_deployment},handle_call}=service:load_deployment(),
+    {glurk,{read_deployment,dep},handle_call}=service:read_deployment(dep),
+    {glurk,{status},handle_call}=service:status(),
+    {glurk,{load,a,b},handle_call}=service:load(a,b),
+    {glurk,{start,c},handle_call}=service:start(c),
+    {glurk,{stop,d,e},handle_call}=service:stop(d,e),
+    {glurk,{unload,f,g},handle_call}=service:unload(f,g),
+    []=service:running(),
+    []=service:missing(),
+    []=service:obsolete(),
+    
     ok.
-
+    
 %% --------------------------------------------------------------------
 %% Function:start/0 
 %% Description: Initiate the eunit tests, set upp needed processes etc
@@ -252,27 +221,7 @@ pass_11()->
 %% Returns: non
 %% --------------------------------------------------------------------
 setup()->
-    ToKill=[	    
-	    'master@joq62-X550CA',
-	    'master@c2',
-	    'slave0@joq62-X550CA',
-	    'slave1@joq62-X550CA',
-	    'slave2@joq62-X550CA',
-	    'slave3@joq62-X550CA',
-	    slave1@c0,
-	    slave3@c0,
-	    slave2@c0,
-	    slave4@c0,
-	    slave0@c0,
-	    slave1@c2,
-	    slave3@c2,
-	    slave2@c2,
-	    slave4@c2,
-	    slave0@c2,
-	    'slave4@joq62-X550CA'],
-    R=[{rpc:call(Node,init,stop,[]),Node}||Node<-ToKill],
-    io:format("R ~p~n",[{R,?MODULE,?FUNCTION_NAME,?LINE}]),
-    timer:sleep(1000),
+   
     ok.
 
 
@@ -283,16 +232,6 @@ setup()->
 %% -------------------------------------------------------------------    
 
 cleanup()->
-    ToKill=['slave0@joq62-X550CA','slave1@joq62-X550CA',
-	    'slave2@joq62-X550CA','slave3@joq62-X550CA',slave1@c2,
-	    slave3@c2,slave2@c2,slave4@c2,slave0@c2,
-	    'slave4@joq62-X550CA','master@joq62-X550CA',master@c2,
-	    
-	    slave1@c0,
-	    slave3@c0,slave2@c0,slave4@c0,slave0@c0,
-	    master@c2],
-    [rpc:call(Node,init,stop,[])||Node<-ToKill],
-    application:stop(cluster),
     ok.
 %% --------------------------------------------------------------------
 %% Function:start/0 

@@ -26,7 +26,7 @@
 %% Key Data structures
 %% 
 %% --------------------------------------------------------------------
--record(state, {running,missing,obselete}).
+-record(state, {running,missing,obsolete}).
 
 
 
@@ -55,13 +55,13 @@
 	 load_deployment/0,
 	 read_deployment/1,
 	 status/0,
-	 load/1,
+	 load/2,
 	 start/1,
-	 stop/1,
+	 stop/2,
 	 unload/2,
 	 running/0,
 	 missing/0,
-	 obsolite/0
+	 obsolete/0
 	]).
 
 
@@ -96,11 +96,11 @@ obsolete()->
 load(ServiceId,Vsn)->
     gen_server:call(?MODULE, {load,ServiceId,Vsn},infinity).
 unload(ServiceId,Slave)->
-    gen_server:call(?MODULE, {load,ServiceId,Vsn},infinity).
+    gen_server:call(?MODULE, {unload,ServiceId,Slave},infinity).
 start(DeploymentFileName)->
     gen_server:call(?MODULE, {start,DeploymentFileName},infinity).
 stop(ServiceId,Slave)->
-    gen_server:call(?MODULE, {stop,Deployment},infinity). 
+    gen_server:call(?MODULE, {stop,ServiceId,Slave},infinity). 
 
 load_catalog()-> 
     gen_server:call(?MODULE, {load_catalog},infinity).
@@ -136,7 +136,7 @@ ping()->
 %
 %% --------------------------------------------------------------------
 init([]) ->
-    {ok, #state{running=[],missing=[],obselete=[]}}.
+    {ok, #state{running=[],missing=[],obsolete=[]}}.
     
 %% --------------------------------------------------------------------
 %% Function: handle_call/3
@@ -159,59 +159,51 @@ handle_call({obsolete},_From,State) ->
     Reply=State#state.obsolete,
     {reply, Reply, State};
 
+handle_call({load,ServiceId,Vsn},_From,State) ->
+  %  Reply=rpc:call(node(),service_lib,start,[DeploymentFileName],2*5000),
+    Reply={glurk,{load,ServiceId,Vsn},?FUNCTION_NAME},
+    {reply, Reply, State};
+
 handle_call({start,DeploymentFileName},_From,State) ->
-  %  Reply=rpc:call(node(),cluster_lib,start_slaves,[HostIds,?SlaveFile],2*5000),
-    Reply=glurk,
+  %  Reply=rpc:call(node(),service_lib,start,[DeploymentFileName],2*5000),
+    Reply={glurk,{start,DeploymentFileName},?FUNCTION_NAME},
     {reply, Reply, State};
 
-
-handle_call({status_slaves},_From,State) ->
-    Reply=rpc:call(node(),cluster_lib,status_slaves,[?SlaveFile],5*5000),
-    io:format("Reply ~p~n",[{Reply,?MODULE,?LINE}]),
-    NewState=case Reply of 
-		 [{running,R},{missing,M}]->
-		     State#state{running_slaves=R,missing_slaves=M};
-		 _->
-		     State
-	     end,
-    {reply, Reply, NewState};
-
-handle_call({status_hosts},_From,State) ->
-    Reply=rpc:call(node(),cluster_lib,status_hosts,[?HostFile],5*5000),
-    io:format("Reply ~p~n",[{Reply,?MODULE,?LINE}]),
-    NewState=case Reply of 
-		 [{running,R},{missing,M}]->
-		     State#state{running_hosts=R,missing_hosts=M};
-		 _->
-		     State
-	     end,
-    
-    {reply, Reply, NewState};
-
-handle_call({read_config},_From,State) ->
-    Reply=rpc:call(node(),cluster_lib,read_config,[?HostFile],5000),
+handle_call({unload,ServiceId,Slave},_From,State) ->
+  %  Reply=rpc:call(node(),service_lib,start,[DeploymentFileName],2*5000),
+    Reply={glurk,{unload,ServiceId,Slave},?FUNCTION_NAME},
     {reply, Reply, State};
 
-handle_call({load_config},_From,State) ->
-    Reply=rpc:call(node(),cluster_lib,load_config,[?HostConfigDir,?HostFile,?GitHostConfigCmd],2*5000),
-   
+handle_call({stop,ServiceId,Slave},_From,State) ->
+  %  Reply=rpc:call(node(),service_lib,start,[DeploymentFileName],2*5000),
+    Reply={glurk,{stop,ServiceId,Slave},?FUNCTION_NAME},
     {reply, Reply, State};
 
-
-handle_call({install},_From,State) ->
-    Reply=rpc:call(node(),cluster_lib,install,[],2*5000),
+handle_call({load_catalog},_From,State) ->
+  %  Reply=rpc:call(node(),service_lib,start,[DeploymentFileName],2*5000),
+    Reply={glurk,{load_catalog},?FUNCTION_NAME},
     {reply, Reply, State};
 
+handle_call({read_catalog},_From,State) ->
+  %  Reply=rpc:call(node(),service_lib,start,[DeploymentFileName],2*5000),
+    Reply={glurk,{read_catalog},?FUNCTION_NAME},
+    {reply, Reply, State};
 
-handle_call({start_app,ApplicationStr,Application,CloneCmd,Dir,Vm},_From,State) ->
-    Reply=cluster_lib:start_app(ApplicationStr,Application,CloneCmd,Dir,Vm),
+handle_call({load_deployment},_From,State) ->
+  %  Reply=rpc:call(node(),service_lib,start,[DeploymentFileName],2*5000),
+    Reply={glurk,{load_deployment},?FUNCTION_NAME},
     {reply, Reply, State};
-handle_call({stop_app,ApplicationStr,Application,Dir,Vm},_From,State) ->
-    Reply=cluster_lib:stop_app(ApplicationStr,Application,Dir,Vm),
+
+handle_call({read_deployment,DeploymentFileName},_From,State) ->
+  %  Reply=rpc:call(node(),service_lib,start,[DeploymentFileName],2*5000),
+    Reply={glurk,{read_deployment,DeploymentFileName},?FUNCTION_NAME},
     {reply, Reply, State};
-handle_call({app_status,Vm,Application},_From,State) ->
-    Reply=cluster_lib:app_status(Vm,Application),
+
+handle_call({status},_From,State) ->
+  %  Reply=rpc:call(node(),service_lib,start,[DeploymentFileName],2*5000),
+    Reply={glurk,{status},?FUNCTION_NAME},
     {reply, Reply, State};
+
 
 handle_call({ping},_From,State) ->
     Reply={pong,node(),?MODULE},
