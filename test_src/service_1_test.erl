@@ -40,13 +40,13 @@ start()->
   %  ok=pass_0(),
   %  io:format("~p~n",[{"Stop pass_0()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
-    io:format("~p~n",[{"Start pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
-    ok=pass_1(),
-    io:format("~p~n",[{"Stop pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
+ %   io:format("~p~n",[{"Start pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
+ %   ok=pass_1(),
+ %   io:format("~p~n",[{"Stop pass_1()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
-  %  io:format("~p~n",[{"Start pass_2()",?MODULE,?FUNCTION_NAME,?LINE}]),
-   % ok=pass_2(),
-  %  io:format("~p~n",[{"Stop pass_2()",?MODULE,?FUNCTION_NAME,?LINE}]),
+    io:format("~p~n",[{"Start pass_2()",?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=pass_2(),
+    io:format("~p~n",[{"Stop pass_2()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
   %  io:format("~p~n",[{"Start pass_3()",?MODULE,?FUNCTION_NAME,?LINE}]),
   %  ok=pass_3(),
@@ -135,11 +135,14 @@ pass_4()->
 %% Returns: non
 %% --------------------------------------------------------------------
 pass_2()->
-
-    [{running,Running},{missing,Missing}]=cluster:status_hosts(),
-    10=lists:flatlength(Running),
-    20=lists:flatlength(Missing),
+    ok=service:load_catalog(),
+    {ok,
+     [{"support",
+       "git clone https://github.com/joq62/support.git"},
+      {"master",
+       "git clone https://github.com/joq62/master.git"}]}=service:read_catalog(),
     
+
     ok.
 
 %% --------------------------------------------------------------------
@@ -190,6 +193,8 @@ setup()->
    ToKill=[	    
 	    'master@joq62-X550CA',
 	    'master@c2',
+	    'master@c1',
+	    'master@c0',
 	    'slave0@joq62-X550CA',
 	    'slave1@joq62-X550CA',
 	    'slave2@joq62-X550CA',
@@ -223,25 +228,6 @@ setup()->
 %% -------------------------------------------------------------------    
 
 cleanup()->
-      ToKill=[	    
-	    'master@joq62-X550CA',
-	    'master@c2',
-	    'slave0@joq62-X550CA',
-	    'slave1@joq62-X550CA',
-	    'slave2@joq62-X550CA',
-	    'slave3@joq62-X550CA',
-	    slave1@c0,
-	    slave3@c0,
-	    slave2@c0,
-	    slave4@c0,
-	    slave0@c0,
-	    slave1@c2,
-	    slave3@c2,
-	    slave2@c2,
-	    slave4@c2,
-	    slave0@c2,
-	    'slave4@joq62-X550CA'],
-    [{rpc:call(Node,init,stop,[]),Node}||Node<-ToKill],
     ok.
 %% --------------------------------------------------------------------
 %% Function:start/0 

@@ -34,7 +34,7 @@
 %% Definitions 
 %% --------------------------------------------------------------------
 -define(GitCatalogCmd,"git clone https://github.com/joq62/catalog.git").
--define(CatalogFile,"catalog/catalog.config").
+-define(CatalogFile,"catalog/application.catalog").
 -define(CatalogDir,"catalog").
 -define(GitDeploymentCmd,"git clone https://github.com/joq62/deployment.git").
 -define(DeploymentDir,"deployment").
@@ -181,13 +181,15 @@ handle_call({stop,ServiceId,Slave},_From,State) ->
     {reply, Reply, State};
 
 handle_call({load_catalog},_From,State) ->
-  %  Reply=rpc:call(node(),service_lib,start,[DeploymentFileName],2*5000),
-    Reply={glurk,{load_catalog},?FUNCTION_NAME},
+    Reply=rpc:call(node(),service_lib,load_catalog,
+		   [?CatalogDir,?CatalogFile,?GitCatalogCmd],2*5000),
+%    Reply={glurk,{load_catalog},?FUNCTION_NAME},
     {reply, Reply, State};
 
-handle_call({read_catalog},_From,State) ->
-  %  Reply=rpc:call(node(),service_lib,start,[DeploymentFileName],2*5000),
-    Reply={glurk,{read_catalog},?FUNCTION_NAME},
+handle_call({read_catalog},_From,State)->
+    Reply=rpc:call(node(),service_lib,read_catalog,
+		   [?CatalogFile],5000),
+  %  Reply={glurk,{read_catalog},?FUNCTION_NAME},
     {reply, Reply, State};
 
 handle_call({load_deployment},_From,State) ->
@@ -196,8 +198,8 @@ handle_call({load_deployment},_From,State) ->
     {reply, Reply, State};
 
 handle_call({read_deployment,DeploymentFileName},_From,State) ->
-  %  Reply=rpc:call(node(),service_lib,start,[DeploymentFileName],2*5000),
-    Reply={glurk,{read_deployment,DeploymentFileName},?FUNCTION_NAME},
+    Reply=rpc:call(node(),service_lib,start,[DeploymentFileName],2*5000),
+%    Reply={glurk,{read_deployment,DeploymentFileName},?FUNCTION_NAME},
     {reply, Reply, State};
 
 handle_call({status},_From,State) ->

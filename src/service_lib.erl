@@ -9,42 +9,16 @@
 %% --------------------------------------------------------------------
 %% Include files
 %% --------------------------------------------------------------------
--define(HostConfigPath,"https://github.com/joq62/host_config.git").
--define(GitHostConfigFile,"git clone https://github.com/joq62/host_config.git").
--define(Cookie,"abc").
--define(HostConfigDir,"host_config").
--define(HostConfigFile,"host_config/hosts.config").
-
--define(AppCatalogPath,"https://github.com/joq62/catalog.git").
--define(GitAppCatalog,"git clone https://github.com/joq62/catalog.git").
--define(AppCatalogDir,"catalog").
--define(AppCatalogFile,"catalog/application.catalog").
 
 %% --------------------------------------------------------------------
 
 
 %% External exports
 -export([
-	 load_config/3,
-	 read_config/1,
-	 status_hosts/1,
-	 status_slaves/1,
-	 start_masters/2,
-	 start_slaves/4,
-	 start_slaves/2
+	 load_catalog/3,
+	 read_catalog/1
 
 	]).
-
-
--export([
-
-	 start_app/5,
-	 stop_app/4,
-	 app_status/2
-
-	]).
-
--define(WAIT_FOR_TABLES,5000).
 
 %% ====================================================================
 %% External functions
@@ -54,205 +28,14 @@
 %% Description: List of test cases 
 %% Returns: non
 %% --------------------------------------------------------------------
-start_slaves(HostIds,SlavesConfigFile)->
-    F1=fun start_slave/2,
-    F2=fun check_slave/3,
-    Reply=case file:consult(SlavesConfigFile) of
-	       {ok,SlaveInfoList}->
-		  SlavesToStart=slaves_to_start(SlaveInfoList,HostIds,[]),
-		%  io:format("SlavesToStart  ~p~n",[{SlavesToStart,?MODULE,?LINE}]),		  
-		  mapreduce:start(F1,F2,[],SlavesToStart);
-	      false->
-		  {error,[noexist,SlavesConfigFile]}
-	  end,
-    Reply.
-
-slaves_to_start([],_,SlavesToStart)->
-    SlavesToStart;
-slaves_to_start([{HostId,SlaveInfoList}|T],HostIds,Acc)->
-    NewAcc=case lists:member(HostId,HostIds) of
-	       true->
-		   Master=list_to_atom("master"++"@"++HostId),
-		   SlavesToStart=[{Master,HostId,SlaveName,ErlCmd}||{SlaveName,ErlCmd}<-SlaveInfoList],
-		   lists:append(SlavesToStart,Acc);
-	       false->
-		   Acc
-	   end,
-    slaves_to_start(T,HostIds,NewAcc).
-
-
-start_slaves(Master,HostId,SlaveNames,ErlCmd)->
-    F1=fun start_slave/2,
-    F2=fun check_slave/3,
-    SlaveSToStart=[{Master,HostId,SlaveName,ErlCmd}||SlaveName<-SlaveNames],
-    R1=mapreduce:start(F1,F2,[],SlaveSToStart),
-    R1.
- 
-start_slave(Pid,{Master,HostId,SlaveName,ErlCmd})->
-  %  io:format("SlaveName,Master  ~p~n",[{SlaveName,Master,?MODULE,?LINE}]),
-    R=case rpc:call(Master,slave,stop,[list_to_atom(SlaveName++"@"++HostId)],2*5000) of
-	  ok->
-	      case rpc:call(Master,slave,start,[HostId,SlaveName,ErlCmd],2*5000) of
-		  {ok,Slave}->
-		      rpc:call(Master,os,cmd,["rm -rf "++SlaveName],5000),
-		      case rpc:call(Master,file,make_dir,[SlaveName],5000) of
-			  ok->
-			      {ok,Slave};
-			  Err->
-			      {error,[Err,Master,HostId,SlaveName,?MODULE,?FUNCTION_NAME,?LINE]}
-		      end;
-		  Err->
-		      {error,[Err,Master,HostId,SlaveName,?MODULE,?FUNCTION_NAME,?LINE]}
-	      end;
-	  Err ->
-	      {error,[Err,Master,HostId,SlaveName,?MODULE,?FUNCTION_NAME,?LINE]}
-      end,
- %   io:format("R  ~p~n",[{R,?MODULE,?LINE}]),
-    Pid!{check_slave,{R}}.
-check_slave(check_slave,Vals,[])->
-  %  io:format("~p~n",[{?MODULE,?LINE,Key,Vals}]),
-     check_slave(Vals,[]).
-
-
-check_slave([],AllResult)->
-    AllResult;
-check_slave([{Result}|T],Acc)->
-    check_slave(T,[Result|Acc]).
-
-
-
-%% --------------------------------------------------------------------
-%% Function:start
-%% Description: List of test cases 
-%% Returns: non
-%% --------------------------------------------------------------------
-start_masters(HostIds,HostFile)->
-    F1=fun start_master/2,
-    F2=fun check_master/3,
-    StatusHosts=status_hosts(HostFile),    
-    {running,AllRunningHosts}=lists:keyfind(running,1,StatusHosts),
-     HostsToStart=[[{host_id,HostId},{ip,Ip},{ssh_port,Port},{uid,Uid},{pwd,Pwd}]
-		   ||[{host_id,HostId},
-		      {ip,Ip},
-		      {ssh_port,Port},
-		      {uid,Uid},
-		      {pwd,Pwd}]<-AllRunningHosts,
-		     true==lists:member(HostId,HostIds)],
-    R1=mapreduce:start(F1,F2,[],HostsToStart),
-    R1.
-    
-
-start_master(Pid,[{host_id,HostId},{ip,Ip},{ssh_port,Port},{uid,Uid},{pwd,Pwd}])->
-    X1=rpc:call(node(),my_ssh,ssh_send,[Ip,Port,Uid,Pwd,"rm -rf master",3000],7000),
-    io:format("rm -rf master ~p~n",[{X1,?MODULE,?LINE}]),
-    X2=rpc:call(node(),my_ssh,ssh_send,[Ip,Port,Uid,Pwd,"mkdir master",3000],7000),
-    io:format("mkdir  master ~p~n",[{X2,?MODULE,?LINE}]),
-    Stopped=stop_vm(HostId,"master"),
-    io:format("Stopped ~p~n",[{Stopped,?MODULE,?LINE}]),
-    ErlCmd="erl -detached -sname master -setcookie "++?Cookie,
-						
-    io:format("Ip,Port,Uid,Pwd ~p~n",[{Ip,Port,Uid,Pwd,?MODULE,?LINE}]),
-    Result=rpc:call(node(),my_ssh,ssh_send,[Ip,Port,Uid,Pwd,ErlCmd,2*5000],3*5000),
-    Pid!{check_master,{Result,HostId}}.
-	      
-check_master(check_master,Vals,[])->
-  %  io:format("~p~n",[{?MODULE,?LINE,Key,Vals}]),
-     check_master(Vals,[]).
-
-
-check_master([],AllResult)->
-    AllResult;
-check_master([{Result,HostId}|T],Acc)->
-    NewAcc=case Result of
-	       ok->
-		   case node_started(HostId,"master") of
-		       true->
-			   [{ok,HostId}|Acc];
-		       false->
-			   [{error,[host_not_started,HostId,?MODULE,?FUNCTION_NAME,?LINE]}|Acc]
-		   end;
-	        _->
-		   [{Result,HostId}|Acc]
-	   end,
-    check_master(T,NewAcc).
-
-
-%% --------------------------------------------------------------------
-%% Function:start
-%% Description: List of test cases 
-%% Returns: non
-%% --------------------------------------------------------------------
-status_slaves(SlavesConfigFile)->
-    F1=fun ping_slave/2,
-    F2=fun check_slave_ping/3,
-    Reply=case file:consult(SlavesConfigFile) of
-	       {ok,SlaveInfoList}->
-		  SlavesToPing=slaves_to_check(SlaveInfoList,[]),
-		%  io:format("SlavesToStart  ~p~n",[{SlavesToStart,?MODULE,?LINE}]),		  
-		  mapreduce:start(F1,F2,[],SlavesToPing);
-	      false->
-		  {error,[noexist,SlavesConfigFile]}
-	  end,
-    Reply.
-
-slaves_to_check([],SlavesToPing)->
-    SlavesToPing;
-slaves_to_check([{HostId,SlaveInfoList}|T],Acc)->
-    SlavesToPing=[{SlaveName,HostId}||{SlaveName,_}<-SlaveInfoList],
-    NewAcc=lists:append(SlavesToPing,Acc),
-    slaves_to_check(T,NewAcc).
-
-ping_slave(Pid,{SlaveName,HostId})->
-   % io:format("SlaveName,HostId  ~p~n",[{SlaveName,HostId ,?MODULE,?LINE}]),
-    Slave=list_to_atom(SlaveName++"@"++HostId),
-    Result=net_adm:ping(Slave),
-    Pid!{ping_slave,{Result,Slave,HostId}}.
-
-
-check_slave_ping(ping_slave,Vals,[])->
-  %  io:format("~p~n",[{?MODULE,?LINE,Key,Vals}]),
-    check_slave_ping(Vals,[{running,[]},{missing,[]}]).
-check_slave_ping([],[{running,Running},{missing,Missing}])->
-    [{running,Running},{missing,Missing}];
-check_slave_ping([{Result,Slave,HostId}|T],[{running,Acc1},{missing,Acc2}])->
-    NewAcc=case Result of
-	       pong->
-		   [{running,[{Slave,HostId}|Acc1]},{missing,Acc2}];
-	       pang->
-		   [{running,Acc1},{missing,[{Slave,HostId}|Acc2]}]
-	   end,
-    check_slave_ping(T,NewAcc).
-
-
-%% --------------------------------------------------------------------
-%% Function:start
-%% Description: List of test cases 
-%% Returns: non
-%% --------------------------------------------------------------------
-status_hosts(HostFile)->
-    Reply=case filelib:is_file(HostFile) of
-	      true->
-		  {ok,HostInfoList}=file:consult(HostFile),
-	%	  io:format("HostInfoList ~p~n",[{HostInfoList,?MODULE,?LINE}]),
-		  host:status_hosts(HostInfoList);
-	      false->
-		  {error,[noexist,HostFile]}
-	  end,
-    Reply.
-
-%% --------------------------------------------------------------------
-%% Function:start
-%% Description: List of test cases 
-%% Returns: non
-%% --------------------------------------------------------------------
-load_config(Dir,HostFile,GitCmd)->
+load_catalog(Dir,File,GitCmd)->
     os:cmd("rm -rf "++Dir),
     os:cmd(GitCmd),
-    Reply=case filelib:is_file(HostFile) of
+    Reply=case filelib:is_file(File) of
 	      true->
 		  ok;
 	      false->
-		  {error,[noexist,HostFile]}
+		  {error,[noexist,File]}
 	  end,
     Reply.
 %% --------------------------------------------------------------------
@@ -260,12 +43,12 @@ load_config(Dir,HostFile,GitCmd)->
 %% Description: List of test cases 
 %% Returns: non
 %% --------------------------------------------------------------------
-read_config(HostFile)->
-    Reply=case filelib:is_file(HostFile) of
+read_catalog(File)->
+    Reply=case filelib:is_file(File) of
 	      true->
-		  file:consult(HostFile);
+		  file:consult(File);
 	      false->
-		  {error,[noexist,HostFile]}
+		  {error,[noexist,File]}
 	  end,
     Reply.
 %% --------------------------------------------------------------------
