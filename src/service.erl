@@ -55,7 +55,8 @@
 	 load_deployment/0,
 	 read_deployment/1,
 	 status/0,
-	 load/2,
+	 load/3,
+	 start_app/2,
 	 start/1,
 	 stop/2,
 	 unload/2,
@@ -93,14 +94,16 @@ obsolete()->
        gen_server:call(?MODULE, {obsolete},infinity).
 
 
-load(ServiceId,Vsn)->
-    gen_server:call(?MODULE, {load,ServiceId,Vsn},infinity).
-unload(ServiceId,Slave)->
-    gen_server:call(?MODULE, {unload,ServiceId,Slave},infinity).
+load(ServiceId,Vsn,Node)->
+    gen_server:call(?MODULE, {load,ServiceId,Vsn,Node},infinity).
+unload(ServiceId,Node)->
+    gen_server:call(?MODULE, {unload,ServiceId,Node},infinity).
+start_app(ServiceId,Node)->
+    gen_server:call(?MODULE, {start_app,ServiceId,Node},infinity).
 start(DeploymentFileName)->
     gen_server:call(?MODULE, {start,DeploymentFileName},infinity).
-stop(ServiceId,Slave)->
-    gen_server:call(?MODULE, {stop,ServiceId,Slave},infinity). 
+stop(ServiceId,Node)->
+    gen_server:call(?MODULE, {stop,ServiceId,Node},infinity). 
 
 load_catalog()-> 
     gen_server:call(?MODULE, {load_catalog},infinity).
@@ -160,9 +163,12 @@ handle_call({obsolete},_From,State) ->
     Reply=State#state.obsolete,
     {reply, Reply, State};
 
-handle_call({load,ServiceId,Vsn},_From,State) ->
-  %  Reply=rpc:call(node(),service_lib,start,[DeploymentFileName],2*5000),
-    Reply={glurk,{load,ServiceId,Vsn},?FUNCTION_NAME},
+handle_call({load,ServiceId,Vsn,Node},_From,State) ->
+    Reply=rpc:call(node(),service_lib,load,[ServiceId,Vsn,Node,?CatalogFile],2*5000),
+    {reply, Reply, State};
+
+handle_call({start_app,ServiceId,Node},_From,State) ->
+    Reply=rpc:call(Node,application,start,[list_to_atom(ServiceId)],2*5000),
     {reply, Reply, State};
 
 handle_call({start,DeploymentFileName},_From,State) ->
@@ -171,8 +177,7 @@ handle_call({start,DeploymentFileName},_From,State) ->
     {reply, Reply, State};
 
 handle_call({unload,ServiceId,Slave},_From,State) ->
-  %  Reply=rpc:call(node(),service_lib,start,[DeploymentFileName],2*5000),
-    Reply={glurk,{unload,ServiceId,Slave},?FUNCTION_NAME},
+    Reply=rpc:call(node(),service_lib,unload,[ServiceId,Slave],2*5000),
     {reply, Reply, State};
 
 handle_call({stop,ServiceId,Slave},_From,State) ->

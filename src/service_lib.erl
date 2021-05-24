@@ -16,13 +16,86 @@
 %% External exports
 -export([
 	 load_catalog/3,
-	 read_catalog/1
+	 read_catalog/1,
+	 load/4,
+	 unload/2
 
 	]).
 
 %% ====================================================================
 %% External functions
 %% ====================================================================
+%load(ServiceId,_Vsn,Node,CatalogFile)->
+%    Result=case read_catalog(CatalogFile) of
+%	       {error,Reason}->
+%		   {error,Reason};
+%	       {ok,Info} ->
+%		   case lists:keyfind(ServiceId,1,Info) of
+%		       false->
+%			   {error,[eexists,ServiceId]};  
+%		       {ServiceId,GitCmd}->
+%			   case rpc:call(Node,filelib,is_dir,[ServiceId]) of
+%			       true->
+%				  {error,[already_exists,ServiceId]}; 
+%			       false->
+%				   case rpc:call(Node,os,cmd,[GitCmd],7000) of
+%				       b
+
+%% --------------------------------------------------------------------
+%% Function:start
+%% Description: List of test cases 
+%% Returns: non
+%% --------------------------------------------------------------------
+load(ServiceId,_Vsn,Node,CatalogFile)->
+    {ok,Info}=read_catalog(CatalogFile),
+    {ServiceId,GitCmd}=lists:keyfind(ServiceId,1,Info),
+    false=rpc:call(Node,filelib,is_dir,[ServiceId]),
+    rpc:call(Node,os,cmd,[GitCmd],7000),
+    Path=filename:join(ServiceId,"ebin"),
+    true=rpc:call(Node,code,add_patha,[Path]),
+    ok.
+
+%% --------------------------------------------------------------------
+%% Function:start
+%% Description: List of test cases 
+%% Returns: non
+%% --------------------------------------------------------------------
+unload(ServiceId,Node)->
+    rpc:call(Node,os,cmd,["rm -rf "++ServiceId],7000),
+    false=rpc:call(Node,filelib,is_dir,[ServiceId]),
+    ok.
+    
+   
+%% --------------------------------------------------------------------
+%% Function:start
+%% Description: List of test cases 
+%% Returns: non
+%% --------------------------------------------------------------------
+load_deployment(Dir,File,GitCmd)->
+    os:cmd("rm -rf "++Dir),
+    os:cmd(GitCmd),
+    Reply=case filelib:is_file(File) of
+	      true->
+		  ok;
+	      false->
+		  {error,[noexist,File]}
+	  end,
+    Reply.
+%% --------------------------------------------------------------------
+%% Function:start
+%% Description: List of test cases 
+%% Returns: non
+%% --------------------------------------------------------------------
+read_deployment(File)->
+    Reply=case filelib:is_file(File) of
+	      true->
+		  file:consult(File);
+	      false->
+		  {error,[noexist,File]}
+	  end,
+    Reply.
+
+
 %% --------------------------------------------------------------------
 %% Function:start
 %% Description: List of test cases 

@@ -48,9 +48,9 @@ start()->
     ok=pass_2(),
     io:format("~p~n",[{"Stop pass_2()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
-  %  io:format("~p~n",[{"Start pass_3()",?MODULE,?FUNCTION_NAME,?LINE}]),
-  %  ok=pass_3(),
-  %  io:format("~p~n",[{"Stop pass_3()",?MODULE,?FUNCTION_NAME,?LINE}]),
+    io:format("~p~n",[{"Start pass_3()",?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=pass_3(),
+    io:format("~p~n",[{"Stop pass_3()",?MODULE,?FUNCTION_NAME,?LINE}]),
 
   %  io:format("~p~n",[{"Start pass_4()",?MODULE,?FUNCTION_NAME,?LINE}]),
   %  ok=pass_4(),
@@ -111,7 +111,17 @@ pass_5()->
 %% Description: Initiate the eunit tests, set upp needed processes etc
 %% Returns: non
 %% --------------------------------------------------------------------
+%% Load support on slave1@c0
 pass_3()->
+    Node='slave1@c0',
+    ServiceId="support",
+    Service=list_to_atom(ServiceId),
+    Vsn="1.0.0",
+    pong=net_adm:ping(Node),
+    ok=service:unload(ServiceId,Node),
+    ok=service:load(ServiceId,Vsn,Node),
+    ok=service:start_app(ServiceId,Node),
+    {pong,Node,Service}=rpc:call(Node,Service,ping,[],5000),
     ok.
 
 %% --------------------------------------------------------------------
