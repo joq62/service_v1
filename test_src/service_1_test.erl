@@ -113,15 +113,20 @@ pass_5()->
 %% --------------------------------------------------------------------
 %% Load support on slave1@c0
 pass_3()->
-    Node='slave1@c0',
+    Node='slave2@joq62-X550CA',
     ServiceId="support",
     Service=list_to_atom(ServiceId),
     Vsn="1.0.0",
+    Path=filename:join(["slave2",ServiceId]),
     pong=net_adm:ping(Node),
     ok=service:unload(ServiceId,Node),
     ok=service:load(ServiceId,Vsn,Node),
     ok=service:start_app(ServiceId,Node),
+    true=rpc:call(Node,filelib,is_dir,[Path],5000),
     {pong,Node,Service}=rpc:call(Node,Service,ping,[],5000),
+    timer:sleep(2000),
+    ok=service:unload(ServiceId,Node),
+    false=rpc:call(Node,filelib,is_dir,[Path],5000),
     ok.
 
 %% --------------------------------------------------------------------

@@ -47,11 +47,13 @@
 %% Returns: non
 %% --------------------------------------------------------------------
 load(ServiceId,_Vsn,Node,CatalogFile)->
+    NodeStr=atom_to_list(Node),
+    [NodeId,_HostId]=string:lexemes(NodeStr,"@"),
     {ok,Info}=read_catalog(CatalogFile),
     {ServiceId,GitCmd}=lists:keyfind(ServiceId,1,Info),
-    false=rpc:call(Node,filelib,is_dir,[ServiceId]),
-    rpc:call(Node,os,cmd,[GitCmd],7000),
-    Path=filename:join(ServiceId,"ebin"),
+    false=rpc:call(Node,filelib,is_dir,[filename:join([NodeId,ServiceId])]),
+    rpc:call(Node,os,cmd,[GitCmd++" "++NodeId++"/"++ServiceId],7000),
+    Path=filename:join([NodeId,ServiceId,"ebin"]),
     true=rpc:call(Node,code,add_patha,[Path]),
     ok.
 
@@ -61,8 +63,11 @@ load(ServiceId,_Vsn,Node,CatalogFile)->
 %% Returns: non
 %% --------------------------------------------------------------------
 unload(ServiceId,Node)->
-    rpc:call(Node,os,cmd,["rm -rf "++ServiceId],7000),
-    false=rpc:call(Node,filelib,is_dir,[ServiceId]),
+    NodeStr=atom_to_list(Node),
+    [NodeId,_HostId]=string:lexemes(NodeStr,"@"),
+    Path=filename:join([NodeId,ServiceId]),
+    rpc:call(Node,os,cmd,["rm -rf "++Path],7000),
+    false=rpc:call(Node,filelib,is_dir,[Path]),
     ok.
     
    
